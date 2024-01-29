@@ -11,7 +11,7 @@ u8 scopy[400 * 240]; //handle last line overflow
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPTSTR    lpCmdLine,int nCmdShow){
 
-	sg::Rect r(50,50,1800,900);
+	sg::Rect r(50,50,800,600);
 	sg::Cmywindow *w = new sg::Cmywindow(r,WS_OVERLAPPEDWINDOW,NULL,(u16*)"Test");
 	int res = w->Run();
 
