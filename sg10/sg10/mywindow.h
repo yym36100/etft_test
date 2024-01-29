@@ -80,8 +80,12 @@ namespace sg{
 
 			sf.DrawT(0,0,text);
 			_tft.drawPixel(10,10,0);
-			_tft.drawSmoothArc(100,100,50,40,30,360-60,TFT_GREEN,TFT_WHITE,1);
-			_tft.drawSmoothArc(200,200,30,25,110,20,TFT_PURPLE,TFT_WHITE,0);
+			//_tft.drawSmoothArc(100,100,50,40,30,360-60,TFT_GREEN,TFT_WHITE,1);
+			//_tft.drawSmoothArc(200,200,30,25,110,20,TFT_PURPLE,TFT_WHITE,0);
+			//_tft.drawRoundRect(50,50,150,150,20,TFT_BLUE);
+			//_tft.drawSmoothCircle(120,120,50,TFT_GOLD,TFT_WHITE);
+			_tft.fillSmoothCircle(250,100,80,TFT_GOLD,TFT_WHITE);
+			//_tft.drawSmoothRoundRect(100,100,7,7,100,80,TFT_BLUE,TFT_WHITE);
 
 			surf->Paint(dc);		
 		}

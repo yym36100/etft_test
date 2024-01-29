@@ -72,16 +72,95 @@ public:
 	eTFT(void){
 		_vpX = 0;
 		_vpY=0;
-		_vpW=320;
-		_vpH=240;    // Note: x start, y start, x end + 1, y end + 1
+		_vpW=800;
+		_vpH=600;    // Note: x start, y start, x end + 1, y end + 1
 		_xDatum=0;
 		_yDatum=0;
-		_xWidth=320;
-		_yHeight=240;
+		_xWidth=800;
+		_yHeight=600;
 		_vpDatum = false;
 		_vpOoB = false;;
 
 	}
+
+	void drawRoundRect(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint32_t color)
+{
+  
+  // smarter version
+  drawFastHLine(x + r  , y    , w - r - r, color); // Top
+  drawFastHLine(x + r  , y + h - 1, w - r - r, color); // Bottom
+  drawFastVLine(x    , y + r  , h - r - r, color); // Left
+  drawFastVLine(x + w - 1, y + r  , h - r - r, color); // Right
+  // draw four corners
+  drawCircleHelper(x + r    , y + r    , r, 1, color);
+  drawCircleHelper(x + w - r - 1, y + r    , r, 2, color);
+  drawCircleHelper(x + w - r - 1, y + h - r - 1, r, 4, color);
+  drawCircleHelper(x + r    , y + h - r - 1, r, 8, color);
+  
+}
+	void drawCircleHelper( int32_t x0, int32_t y0, int32_t rr, uint8_t cornername, uint32_t color)
+{
+  if (rr <= 0) return;
+  int32_t f     = 1 - rr;
+  int32_t ddF_x = 1;
+  int32_t ddF_y = -2 * rr;
+  int32_t xe    = 0;
+  int32_t xs    = 0;
+  int32_t len   = 0;
+
+ 
+  do
+  {
+    while (f < 0) {
+      ++xe;
+      f += (ddF_x += 2);
+    }
+    f += (ddF_y += 2);
+
+    if (xe-xs==1) {
+      if (cornername & 0x1) { // left top
+        drawPixel(x0 - xe, y0 - rr, color);
+        drawPixel(x0 - rr, y0 - xe, color);
+      }
+      if (cornername & 0x2) { // right top
+        drawPixel(x0 + rr    , y0 - xe, color);
+        drawPixel(x0 + xs + 1, y0 - rr, color);
+      }
+      if (cornername & 0x4) { // right bottom
+        drawPixel(x0 + xs + 1, y0 + rr    , color);
+        drawPixel(x0 + rr, y0 + xs + 1, color);
+      }
+      if (cornername & 0x8) { // left bottom
+        drawPixel(x0 - rr, y0 + xs + 1, color);
+        drawPixel(x0 - xe, y0 + rr    , color);
+      }
+    }
+    else {
+      len = xe - xs++;
+      if (cornername & 0x1) { // left top
+        drawFastHLine(x0 - xe, y0 - rr, len, color);
+        drawFastVLine(x0 - rr, y0 - xe, len, color);
+      }
+      if (cornername & 0x2) { // right top
+        drawFastVLine(x0 + rr, y0 - xe, len, color);
+        drawFastHLine(x0 + xs, y0 - rr, len, color);
+      }
+      if (cornername & 0x4) { // right bottom
+        drawFastHLine(x0 + xs, y0 + rr, len, color);
+        drawFastVLine(x0 + rr, y0 + xs, len, color);
+      }
+      if (cornername & 0x8) { // left bottom
+        drawFastVLine(x0 - rr, y0 + xs, len, color);
+        drawFastHLine(x0 - xe, y0 + rr, len, color);
+      }
+    }
+    xs = xe;
+  } while (xe < rr--);
+
+ 
+}
+
+
 
 	inline uint8_t sqrt_fraction(uint32_t num) {
 		if (num > (0x40000000)) return 0;
@@ -121,6 +200,13 @@ public:
 		surf->color = color;
 		surf->SetPixel(x,y);
 	}
+	uint16_t drawPixel(int32_t x, int32_t y, uint32_t color, uint8_t alpha, uint32_t bg_color = 0x00FFFFFF){
+
+  if (bg_color == 0x00FFFFFF) bg_color = readPixel(x, y);
+  color = fastBlend(alpha, color, bg_color);
+  drawPixel(x, y, color);
+  return color;
+}
 	uint16_t readPixel(int32_t x, int32_t y){
 		
 		return 0xffff;//surf->GetPixel(x,y);
@@ -501,7 +587,185 @@ public:
 		//pushBlock(color, h);
 		//todo
 
-
 	}
+
+	void drawSmoothCircle(int32_t x, int32_t y, int32_t r, uint32_t fg_color, uint32_t bg_color)
+{
+  drawSmoothRoundRect(x-r, y-r, r, r-1, 0, 0, fg_color, bg_color);
+}
+	void fillSmoothCircle(int32_t x, int32_t y, int32_t r, uint32_t color, uint32_t bg_color)
+{
+  if (r <= 0) return;
+
+  
+
+  drawFastHLine(x - r, y, 2 * r + 1, color);
+  int32_t xs = 1;
+  int32_t cx = 0;
+
+  int32_t r1 = r * r;
+  r++;
+  int32_t r2 = r * r;
+  
+  for (int32_t cy = r - 1; cy > 0; cy--)
+  {
+    int32_t dy2 = (r - cy) * (r - cy);
+    for (cx = xs; cx < r; cx++)
+    {
+      int32_t hyp2 = (r - cx) * (r - cx) + dy2;
+      if (hyp2 <= r1) break;
+      if (hyp2 >= r2) continue;
+
+      uint8_t alpha = ~sqrt_fraction(hyp2);
+      if (alpha > 246) break;
+      xs = cx;
+      if (alpha < 9) continue;
+
+      if (bg_color == 0x00FFFFFF) {
+        drawPixel(x + cx - r, y + cy - r, color, alpha, bg_color);
+        drawPixel(x - cx + r, y + cy - r, color, alpha, bg_color);
+        drawPixel(x - cx + r, y - cy + r, color, alpha, bg_color);
+        drawPixel(x + cx - r, y - cy + r, color, alpha, bg_color);
+      }
+      else {
+        uint16_t pcol = drawPixel(x + cx - r, y + cy - r, color, alpha, bg_color);
+        drawPixel(x - cx + r, y + cy - r, pcol);
+        drawPixel(x - cx + r, y - cy + r, pcol);
+        drawPixel(x + cx - r, y - cy + r, pcol);
+      }
+    }
+    drawFastHLine(x + cx - r, y + cy - r, 2 * (r - cx) + 1, color);
+    drawFastHLine(x + cx - r, y - cy + r, 2 * (r - cx) + 1, color);
+  }
+  
+}
+
+// x,y is top left corner of bounding box for a complete rounded rectangle
+// r = arc outer corner radius, ir = arc inner radius. Arc thickness = r-ir+1
+// w and h are width and height of the bounding rectangle
+// If w and h are < radius (e.g. 0,0) a circle will be drawn with centre at x+r,y+r
+// Arc foreground fg_color anti-aliased with background colour at edges
+// A subset of corners can be drawn by specifying a quadrants mask. A bit set in the
+// mask means draw that quadrant (all are drawn if parameter missing):
+//   0x1 | 0x2
+//    ---¦---    Arc quadrant mask select bits (as in drawCircleHelper fn)
+//   0x8 | 0x4
+void drawSmoothRoundRect(int32_t x, int32_t y, int32_t r, int32_t ir, int32_t w, int32_t h, uint32_t fg_color, uint32_t bg_color, uint8_t quadrants=0x0f)
+{
+  if (_vpOoB) return;
+  if (r < ir) transpose(r, ir); // Required that r > ir
+  if (r <= 0 || ir < 0) return; // Invalid
+
+  w -= 2*r;
+  h -= 2*r;
+
+  if (w < 0) w = 0;
+  if (h < 0) h = 0;
+  
+
+  x += r;
+  y += r;
+
+  uint16_t t = r - ir + 1;
+  int32_t xs = 0;
+  int32_t cx = 0;
+
+  int32_t r2 = r * r;   // Outer arc radius^2
+  r++;
+  int32_t r1 = r * r;   // Outer AA zone radius^2
+
+  int32_t r3 = ir * ir; // Inner arc radius^2
+  ir--;
+  int32_t r4 = ir * ir; // Inner AA zone radius^2
+
+  uint8_t alpha = 0;
+
+  // Scan top left quadrant x y r ir fg_color  bg_color
+  for (int32_t cy = r - 1; cy > 0; cy--)
+  {
+    int32_t len = 0;  // Pixel run length
+    int32_t lxst = 0; // Left side run x start
+    int32_t rxst = 0; // Right side run x start
+    int32_t dy2 = (r - cy) * (r - cy);
+
+    // Find and track arc zone start point
+    while ((r - xs) * (r - xs) + dy2 >= r1) xs++;
+
+    for (cx = xs; cx < r; cx++)
+    {
+      // Calculate radius^2
+      int32_t hyp = (r - cx) * (r - cx) + dy2;
+
+      // If in outer zone calculate alpha
+      if (hyp > r2) {
+        alpha = ~sqrt_fraction(hyp); // Outer AA zone
+      }
+      // If within arc fill zone, get line lengths for each quadrant
+      else if (hyp >= r3) {
+        rxst = cx; // Right side start
+        len++;     // Line segment length
+        continue;  // Next x
+      }
+      else {
+        if (hyp <= r4) break;  // Skip inner pixels
+        alpha = sqrt_fraction(hyp); // Inner AA zone
+      }
+
+      if (alpha < 16) continue;  // Skip low alpha pixels
+
+      // If background is read it must be done in each quadrant - TODO
+      uint16_t pcol = fastBlend(alpha, fg_color, bg_color);
+      if (quadrants & 0x8) drawPixel(x + cx - r, y - cy + r + h, pcol);     // BL
+      if (quadrants & 0x1) drawPixel(x + cx - r, y + cy - r, pcol);         // TL
+      if (quadrants & 0x2) drawPixel(x - cx + r + w, y + cy - r, pcol);     // TR
+      if (quadrants & 0x4) drawPixel(x - cx + r + w, y - cy + r + h, pcol); // BR
+    }
+    // Fill arc inner zone in each quadrant
+    lxst = rxst - len + 1; // Calculate line segment start for left side
+    if (quadrants & 0x8) drawFastHLine(x + lxst - r, y - cy + r + h, len, fg_color);     // BL
+    if (quadrants & 0x1) drawFastHLine(x + lxst - r, y + cy - r, len, fg_color);         // TL
+    if (quadrants & 0x2) drawFastHLine(x - rxst + r + w, y + cy - r, len, fg_color);     // TR
+    if (quadrants & 0x4) drawFastHLine(x - rxst + r + w, y - cy + r + h, len, fg_color); // BR
+  }
+
+  // Draw sides
+  if ((quadrants & 0xC) == 0xC) fillRect(x, y + r - t + h, w + 1, t, fg_color); // Bottom
+  if ((quadrants & 0x9) == 0x9) fillRect(x - r + 1, y, t, h + 1, fg_color);     // Left
+  if ((quadrants & 0x3) == 0x3) fillRect(x, y - r + 1, w + 1, t, fg_color);     // Top
+  if ((quadrants & 0x6) == 0x6) fillRect(x + r - t + w, y, t, h + 1, fg_color); // Right
+  
+}
+
+void fillRect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
+{
+  if (_vpOoB) return;
+
+  x+= _xDatum;
+  y+= _yDatum;
+
+  // Clipping
+  if ((x >= _vpW) || (y >= _vpH)) return;
+
+  if (x < _vpX) { w += x - _vpX; x = _vpX; }
+  if (y < _vpY) { h += y - _vpY; y = _vpY; }
+
+  if ((x + w) > _vpW) w = _vpW - x;
+  if ((y + h) > _vpH) h = _vpH - y;
+
+  if ((w < 1) || (h < 1)) return;
+
+  
+//  setWindow(x, y, x + w - 1, y + h - 1);
+//  pushBlock(color, w * h);
+  sg::Rect r;
+  r.x=x;
+  r.y=y;
+  r.w=w;
+  r.h=h;
+  surf->color = color16to24(color);
+  surf->FillRect(r);
+
+  
+}
 
 };
