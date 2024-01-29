@@ -5,10 +5,21 @@
 
 #include <stdio.h>
 #include <math.h>
+
+#include "etft.h"
 extern i16 ssdlevels;
 extern i16 dithercnt;
 namespace sg{
 
+	HDC* pdc;
+	CWinSurface *pws;
+
+	void debugdraw(int n){
+		if(n==3){
+			pws->Paint(*pdc);
+			Sleep(1);
+		}
+	};
 	class Cmywindow;
 	class Cmywindow : public CWindow {
 	public:
@@ -22,6 +33,8 @@ namespace sg{
 		float gamma;
 		int imgidx;
 
+		eTFT _tft;
+
 		Cmywindow(Rect r, u32 style,HWND parent_hWnd,u16 *name) : CWindow( r, style, parent_hWnd, name),sf(surf,black),stmf(surf) {
 			//end ctor
 			imgidx=0;
@@ -32,6 +45,10 @@ namespace sg{
 
 			surf->do4 = 0;
 			surf->do8 = 0;
+
+			_tft.surf=surf;
+			
+			//_tft.drawPixel(10,10,0);
 
 
 			ShowWindow(hWnd, SW_SHOWNORMAL);
@@ -46,6 +63,14 @@ namespace sg{
         }
 
 		virtual void Paint(HDC dc) {		
+			static int once = 0;
+			if(once ==0){
+				once = 1;
+				pws = surf;
+				_tft.dbg = debugdraw;
+			}
+			pdc = &dc;
+
 			surf->color = white;
 			surf->Clear();
 			surf->color = red;
@@ -54,6 +79,9 @@ namespace sg{
 			sprintf(text,"test");
 
 			sf.DrawT(0,0,text);
+			_tft.drawPixel(10,10,0);
+			_tft.drawSmoothArc(100,100,50,40,30,360-60,TFT_GREEN,TFT_WHITE,1);
+			_tft.drawSmoothArc(200,200,30,25,110,20,TFT_PURPLE,TFT_WHITE,0);
 
 			surf->Paint(dc);		
 		}
@@ -91,5 +119,6 @@ namespace sg{
 
 	};
 };// sg
+
 
 

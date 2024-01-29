@@ -275,6 +275,14 @@
 					</Filter>
 				</Filter>
 			</Filter>
+			<Filter
+				Name="espi"
+				>
+				<File
+					RelativePath=".\etft.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>
